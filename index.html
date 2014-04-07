@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>dataCacher - qunit</title>	
+          <script src="./librarys/RGraph.common.core.js"></script>
+         <script src="./librarys/RGraph.common.csv.js"></script>   
+         <script src="./librarys/dataStream.js"></script> 
+         
+        <script src="./helpers/dataHandler.js"></script>
+        <script src="./helpers/dateTimeFormat.js"></script>
+     
+        <script src="./datacaching/dataCacher.js"></script>
+        <script src="./datacaching/webSockets.js"></script>
+        	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        
+<script type="text/javascript">
+
+//1362557722-1386144922
+//226688801-1205428001
+//1393920922-1395389722
+
+//1353312850-1354090450
+//1141546522-1236327322
+$(function() {
+
+	DataCacher = new dataCacher();
+    DataCacher.getData("autogen", "hourly", "default", "0,1,6", "226688801-1205428001", 300, function(obj) {
+        
+                         
+                var ser = [];
+console.log(obj);
+                for(var i = 0; i < obj.data.length; i++)
+                {       
+                    var series = {data: [], name: "asdasd",pointInterval:  60 * 1000, dataGrouping: {enabled: true, groupPixelWidth: 2, approximation: 'average'}};
+                    series.data = (obj.data[i]).slice(0);
+                    series.name = obj.label[i];                    
+                    for(var j = 0; j < obj.data[i].length; j++)
+                    {
+                        var pointData = obj.data[i][j];
+                        series.data[j] = [];
+                        series.data[j].push(new Date(obj.dateTime[j]).getTime());
+                        series.data[j].push(pointData);
+                    }
+                    ser.push(series);
+                }
+                
+                
+
+
+		$('#container').highcharts('StockChart', {
+		    chart: {
+                        zoomType: 'xy',
+                        events: {
+					selection : afterSetExtremes
+				}
+                                
+		    },
+                    credits:
+                            {
+                                enabled: false
+                            },
+                    
+                    navigator:
+                            {
+                                enabled:true,
+                                maskFill: 'rgba(180, 198, 220, 0.75)',
+                                height: 150,
+                              adaptToUpdatedData: true,
+                                baseSeries: 4,
+                               
+                                
+                            },
+
+		    rangeSelector: {
+                        inputEnabled: $('#container').width() > 480
+//                         selected:4
+		    },
+                    scrollbar:
+                            {
+                                
+                            },
+
+		    yAxis: {
+		    	/*labels: {
+		    		formatter: function() {
+		    			return (this.value > 0 ? '+' : '') + this.value + '%';
+		    		}
+		    	},
+		    	plotLines: [{
+		    		value: 0,
+		    		width: 2,
+		    		color: 'silver'
+		    	}]*/
+		    },
+                    
+                    xAxis : {
+                       /* events : {
+					afterSetExtremes : setExtremes
+				},*/
+                                maxZoom: 60 * 1000,
+				minRange: 60 * 1000 // one hour
+			},
+		    
+		    plotOptions: {
+                      
+		    	
+		    },
+		    
+		    tooltip: {
+		    	pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
+		    	valueDecimals: 8,
+                        animation: false,
+                        xDateformat:  '%Y-%m-%d<br/>%H:%M',
+                        enabled:true,
+                        positioner: function () {
+	    		return { x: 10, y: 35 };
+	    	}
+                        
+                        
+                       
+		    },
+		    
+		    series: ser
+		});
+	});
+        
+        function afterSetExtremes(event) {
+		
+chart = $('#container').highcharts();
+var begTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', event.xAxis[0].min);
+var endTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', event.xAxis[0].max);
+begTime = event.xAxis[0].min/1000;
+endTime = event.xAxis[0].max/1000;
+begTime = (begTime.toString()).split('.')[0];
+endTime = (endTime.toString()).split('.')[0];
+	DataCacher.getData("autogen", "hourly", "default", "0,1,6", begTime + '-' + endTime, 200, function(obj) {
+           
+           console.log(obj);
+		var ser = [];
+                for(var i = 0; i < obj.data.length; i++)
+                {       
+                    var series = {data: [], name: "asdasd", pointInterval: 60 * 1000, dataGrouping: {enabled: false, groupPixelWidth: 2,approximation: 'average'}};
+                    series.data = (obj.data[i]).slice(0);
+                    series.name = obj.label[i];
+                    for(var j = 0; j < obj.data[i].length; j++)
+                    {
+                        var pointData = obj.data[i][j];
+                        series.data[j] = [];
+                        series.data[j].push(new Date(obj.dateTime[j]).getTime());
+                        series.data[j].push(pointData);                        
+                    }                   
+                    ser.push(series);                 
+                }
+		for(var i = 0; i < ser.length; i++)
+                {
+                    chart.series[i].setData(ser[i].data);
+                }             
+	});
+	
+}
+
+function setExtremes(e) {
+					
+                 var currentExtremes = this.getExtremes(),
+		range = e.max - e.min,
+		chart = $('#container').highcharts();
+	DataCacher.getData("autogen", "hourly", "default", "0,1", (Math.round(e.min)/1000) + '-' + (Math.round(e.max)/1000), 100, function(obj) {
+           
+           console.log(obj);
+		var ser = [];
+                for(var i = 0; i < obj.data.length; i++)
+                {       
+                    var series = {data: [], name: "asdasd", pointInterval: 3600 * 1000};
+                    series.data = (obj.data[i]).slice(0);
+                    series.name = obj.label[i];
+                    for(var j = 0; j < obj.data[i].length; j++)
+                    {
+                        var pointData = obj.data[i][j];
+                        series.data[j] = [];
+                        series.data[j].push(new Date(obj.dateTime[j]).getTime());
+                        series.data[j].push(pointData);
+                    }                    
+                    ser.push(series);
+                    chart.series[i].addPoint(ser[i].data[j],false);
+                }
+//		for(var i = 0; i < ser.length; i++)
+//                {
+//                    chart.series[i].addPoint(ser[i].data,false);
+//                }
+               // chart.redraw();
+	});
+	
+}
+
+});
+</script>        
+</head>
+<body>
+
+        
+        
+        
+        <script src="highstock.js"></script>
+<script src="/modules/exporting.js"></script>
+
+<div id="container" style="height: 800px; min-width:950px"></div>
+        
+        
+
+ 
+ </body>
