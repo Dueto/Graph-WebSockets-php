@@ -14,10 +14,10 @@ self.addEventListener('message', function(e)
     level = data[4];
     tableColumns = data[5];
     tableName = data[6];
-    maxLevel = data[7];
-    db_items = data[8];
-    labels = data[9];
-    dataLevels = data[10];
+    db_items = data[7];
+    labels = data[8];
+    dataLevels = data[9];
+    aggregation = data[10];
     startBackgroundCaching();
 });
 
@@ -29,10 +29,12 @@ startBackgroundCaching = function()
 {
     channelCount = tableColumns.split(',').length - 1;
     socket.openSocket();
+    var begTime = window.split('-')[0];
+    var endTime = window.split('-')[1];
     socket.setOnOpenCallback(function()
     {
         socket.setOnMessageCallback(onMessageRecieved);
-        socket.sendMessage(tableName + '<>' + window + '<>' + '1' + '<>' + 'mean');
+        socket.sendMessage(tableName + ';' + begTime + ';' + endTime + ';' + '1' + ';' + aggregation + ';' + channelCount + ';');
     });
 
 
@@ -68,7 +70,7 @@ function onReadyFormingData(objData)
                     }
                     else
                     {
-                        req.executeSql('INSERT OR REPLACE INTO DataSource (db_server, db_name, db_group, level, db_items, maxlevel, labels, datalevels) VALUES ("' + db_server + '","' + db_name + '","' + db_group + '","' + level + '","' + db_items + '","' + maxLevel + '","' + labels + '","' + dataLevels + '")');
+                        req.executeSql('INSERT OR REPLACE INTO DataSource (db_server, db_name, db_group, aggregation, level, db_items, labels, datalevels) VALUES ("' + db_server + '","' + db_name + '","' + db_group + '","' + aggregation + '","' + level + '","' + db_items + '","' + labels + '","' + dataLevels + '")');
                         req.executeSql('SELECT id FROM DataSource WHERE db_server = "' + db_server + '" AND \n\
                                                    db_name = "' + db_name + '" AND \n\
                                                    db_group = "' + db_group + '" AND \n\
@@ -133,6 +135,8 @@ function onError(err)
 
 function onMessageRecieved(msg)
 {
+    socket.closeSocket();
+    console.log(msg.data);
     var dataStream = new DataStream(msg.data);
     dataStream.endianness = dataStream.BIG_ENDIAN;
 
@@ -147,10 +151,11 @@ function onMessageRecieved(msg)
     while (!dataStream.isEof())
     {
         //dataStream.readCString(26);
-        dateTime.push(dataStream.readCString(26));
+        dateTime.push(dataStream.readString(19));
         for (var i = 0; i < channelCount; i++)
         {
-            data[i].push(dataStream.readFloat32(true));
+            data[i].push(dataStream.readFloat64(true));
+            dataStream.readString(1);
         }
     }
 
@@ -169,6 +174,24 @@ function formValues(data, i)
 }
 ;
 
+
+function splitTimeFromUnix(window)
+{
+    var Microsec = window.split('.')[1];
+    if (Microsec == undefined)
+    {
+        Microsec = '000000';
+    }
+    var d = new Date(window * 1000);
+    var buf = d.toISOString().substr(13).substring(0, 7);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    var Time = d.toISOString().substring(0, 13);
+    Time = Time + buf + Microsec;
+    return Time;
+
+
+}
+;
 
 
 //У меня есть ежедневник, в котором все детально описано, планирование наше все:)

@@ -9,11 +9,12 @@ var dataHandler = function()
     me.db_group = '';
     me.db_mask = '';
     me.window = '';
+    me.aggregation = '';
+
     me.pointCount = '';
     me.level = '';
-    me.maxlevel = '';
+
     me.labels = '';
-    me.tableName = '';
 
     me.isOnePortion = true;
 
@@ -49,13 +50,13 @@ var dataHandler = function()
     me.dataLevel = [];
 
 
-    me.dataAggregators = [{level: 'Year', aggregator: '-01-01T00:00:00.000000', window: 31536000},
-        {level: 'Month', aggregator: '-01T00:00:00.000000', window: 2592000},
-        {level: 'Day', aggregator: 'T00:00:00.000000', window: 86400},
-        {level: 'Hour', aggregator: ':00:00.000000', window: 3600},
-        {level: 'Min', aggregator: ':00.000000', window: 60},
-        {level: 'Sec', aggregator: '.000000', window: 1},
-        {level: 'Milisec', aggregator: '', window: 0}];
+//    me.dataAggregators = [{level: 'Year', aggregator: '-01-01T00:00:00.000000', window: 31536000},
+//        {level: 'Month', aggregator: '-01T00:00:00.000000', window: 2592000},
+//        {level: 'Day', aggregator: 'T00:00:00.000000', window: 86400},
+//        {level: 'Hour', aggregator: ':00:00.000000', window: 3600},
+//        {level: 'Min', aggregator: ':00.000000', window: 60},
+//        {level: 'Sec', aggregator: '.000000', window: 1},
+//        {level: 'Milisec', aggregator: '', window: 0}];
 
 
 
@@ -87,8 +88,12 @@ var dataHandler = function()
 
     me.startBackgroundCaching = function(level, tableColumns, tableName)
     {
-        if (this.maxlevel <= level.window)
+        if (level.window >= 0)
         {
+            if (level.window == 0)
+            {
+                this.aggregation = 'v';
+            }
             var db_items = this.db_mask[0];
             var labels = this.labels[0];
             var datalevels = this.dataLevel[0].window;
@@ -103,7 +108,7 @@ var dataHandler = function()
             }
             var worker = new Worker('./datacaching/backgrDataCacher.js');
             this.backCachers.push(worker);
-            worker.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + level.window + '<>' + tableColumns + '<>' + tableName + '<>' + this.maxlevel + '<>' + db_items + '<>' + labels + '<>' + datalevels);
+            worker.postMessage(this.db_server + '<>' + this.db_name + '<>' + this.db_group + '<>' + this.window + '<>' + level.window + '<>' + tableColumns + '<>' + tableName + '<>' + db_items + '<>' + labels + '<>' + datalevels + '<>' + this.aggregation);
         }
     };
 
@@ -117,16 +122,6 @@ var dataHandler = function()
         this.pointCount = pointCount;
 
         this.level = this.getDataLevel(this.pointCount, this.window);
-        if (this.level.window < this.maxlevel)
-        {
-            for (var i = 0; i < this.dataLevel.length; i++)
-            {
-                if (this.maxlevel <= this.dataLevel[i].window && this.maxlevel > this.dataLevel[i + 1].window)
-                {
-                    this.level = this.dataLevel[i];
-                }
-            }
-        }
     };
 
     me.setRequest = function(window, pointCount)
@@ -135,21 +130,11 @@ var dataHandler = function()
         this.pointCount = pointCount;
 
         this.level = this.getDataLevel(this.pointCount, this.window);
-        if (this.level.window < this.maxlevel)
-        {
-            for (var i = 0; i < this.dataLevel.length; i++)
-            {
-                if (this.maxlevel <= this.dataLevel[i].window && this.maxlevel > this.dataLevel[i + 1].window)
-                {
-                    this.level = this.dataLevel[i];
-                }
-            }
-        }
     };
 
-    me.isPriviousRequest = function(db_server, db_name, db_group)
+    me.isPriviousRequest = function(db_server, db_name, db_group, aggregation)
     {
-        if (this.db_server == db_server && this.db_name == db_name && this.db_group == db_group)
+        if (this.db_server == db_server && this.db_name == db_name && this.db_group == db_group && this.aggregation == aggregation)
         {
             return true;
         }
@@ -164,21 +149,11 @@ var dataHandler = function()
         this.dataLevel = [];
         for (var i = 0; i < dataLevel.length; i++)
         {
-            var min = 999999999;
             var level = {};
             level.window = dataLevel[i];
-            for (var j = 0; j < this.dataAggregators.length; j++)
-            {
-                if (Math.abs(this.dataAggregators[j].window / dataLevel[i] - 1) < min)
-                {
-                    min = Math.abs(this.dataAggregators[j].window / dataLevel[i] - 1);
-                    level.aggregator = this.dataAggregators[j].aggregator;
-                }
-            }
             this.dataLevel.push(level);
         }
-        this.dataLevel.push({aggregator: '', window: 0});
-    }
+    };
 
     me.concatRowData = function(res, dataBuffer, dateTime)
     {
@@ -319,11 +294,6 @@ var dataHandler = function()
         return this.window;
     };
 
-    me.setMaxLevel = function(maxlevel)
-    {
-        this.maxlevel = maxlevel;
-    };
-
     me.getLabels = function()
     {
         return this.labels;
@@ -344,6 +314,16 @@ var dataHandler = function()
     me.setReadingMode = function(readingMode)
     {
         this.isOnePortion = readingMode;
+    };
+
+    me.setAggregation = function(aggregation)
+    {
+        this.aggregation = aggregation;
+    };
+
+    me.getAggregation = function()
+    {
+        return this.aggregation;
     };
 
     me.deleteWorkers = function()
@@ -373,11 +353,13 @@ var dataHandler = function()
             while (!dataStream.isEof())
             {
                 //dataStream.readCString(26);
-                dateTime.push(dataStream.readCString(26));
+                dateTime.push(dataStream.readString(19));
                 for (var i = 0; i < this.db_mask.length; i++)
                 {
-                    data[i].push(dataStream.readFloat32(true));
+                    data[i].push(dataStream.readFloat64(true));
+                    dataStream.readString(1);
                 }
+
             }
 
         }

@@ -21,9 +21,9 @@ var dataCacher = function()
             db_mask,
             window,
             pointCount,
+            aggregation,
             onEndCallBack)
     {
-        var self = this;
         var self = this;
 
         self.clientsCallback = onEndCallBack;
@@ -39,6 +39,10 @@ var dataCacher = function()
             }
             self.dataHandl.setRequest(window, pointCount);
             self.level = self.dataHandl.level;
+            if (self.level.window == 0)
+            {
+                self.dataHandl.setAggregation('v');
+            }
             self.columns = self.formTableColumns();
             self.tableName = self.formTableName(self.level.window);
 
@@ -48,7 +52,7 @@ var dataCacher = function()
         {
             self.db.transaction(function(req)
             {
-                var sql = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '"))'
+                var sql = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '") AND (aggregation="' + aggregation + '"))'
                 req.executeSql(sql, [], function(req, results)
                 {
                     if (results.rows.length == 0)
@@ -64,11 +68,15 @@ var dataCacher = function()
                             self.db_items = db_mask;
                         }
                         var dataLevels = self.formDataLevels(db_server, db_name, db_group);
-                        self.dataHandl.setDataLevels(dataLevels);
-                        self.dataHandl.setMaxLevel(self.formMaxLevel(db_server, db_name, db_group));
+                        self.dataHandl.setDataLevels(dataLevels.reverse());
+                        self.dataHandl.setAggregation(aggregation);
                         self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
 
                         self.level = self.dataHandl.level;
+                        if (self.level.window == 0)
+                        {
+                            self.dataHandl.setAggregation('v');
+                        }
                         self.columns = self.formTableColumns();
                         self.dataHandl.setLabels(self.formLabels());
                         self.tableName = self.formTableName(self.level.window);
@@ -90,11 +98,15 @@ var dataCacher = function()
 
                         self.dataHandl.setDataLevels(results.rows.item(0).datalevels.split(','));
                         self.dataHandl.setLabels(results.rows.item(0).labels.split(','));
-                        self.dataHandl.setMaxLevel(results.rows.item(0).maxlevel);
+                        self.dataHandl.setAggregation(results.rows.item(0).aggregation);
                         self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
 
 
                         self.level = self.dataHandl.level;
+                        if (self.level.window == 0)
+                        {
+                            self.dataHandl.setAggregation('v');
+                        }
                         self.columns = self.formTableColumns();
                         self.tableName = self.formTableName(self.level.window);
 
@@ -134,14 +146,16 @@ var dataCacher = function()
             self.db.transaction(function(req)
             {
 
-                var sqlStatement = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '") AND (level="' + self.level.window + '"))';
+                var sqlStatement = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '") AND (level="' + self.level.window + '")) AND (aggregation="' + self.dataHandl.getAggregation() + '")';
                 ;
                 req.executeSql(sqlStatement, [], function(req, results)
                 {
                     if (results.rows.length == 0)
                     {
+                        var begTime = self.dataHandl.getWindow().split('-')[0];
+                        var endTime = self.dataHandl.getWindow().split('-')[1];
                         self.dataHandl.setReadingMode(true);
-                        self.webSocket.sendMessage(self.tableName + '<>' + self.dataHandl.getWindow() + '<>' + '1' + '<>' + 'mean');
+                        self.webSocket.sendMessage(self.tableName + ';' + begTime + ';' + endTime + ';' + '1' + ';' + self.dataHandl.getAggregation() + ';' + self.dataHandl.getDbMask().length + ';');
                     }
                     else
                     {
@@ -151,8 +165,8 @@ var dataCacher = function()
                         var beginTime = self.dateHelper.splitTimeFromUnix(window.split('-')[0]);
                         var endTime = self.dateHelper.splitTimeFromUnix(window.split('-')[1]);
 
-                        var formatedBeginTime = self.dataHandl.formatDate(beginTime);
-                        var formatedEndTime = self.dataHandl.formatDate(endTime);
+//                        var formatedBeginTime = self.dataHandl.formatDate(beginTime);
+//                        var formatedEndTime = self.dataHandl.formatDate(endTime);
 
                         self.db.transaction(function(req)
                         {
@@ -588,7 +602,7 @@ var dataCacher = function()
         this.db.transaction(function(req)
         {
             req.executeSql('CREATE TABLE IF NOT EXISTS DataSource \n\
-                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, level, db_items, maxlevel, labels, datalevels)', [],
+                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, aggregation, level, db_items, labels, datalevels)', [],
                     function(res, rows) {
                     },
                     this.onErrorSql);
@@ -681,27 +695,24 @@ var dataCacher = function()
         return url;
     };
 
+    me.formURLInfo = function(db_server, db_name, db_group, target)
+    {
+        var url = 'http://ipecluster5.ipe.kit.edu/ADEI/ADEIWS/services/info.php?db_server=' + db_server
+                + '&db_name=' + db_name
+                + '&db_group=' + db_group
+                + '&target=' + target;
+        return url;
+    };
+
     me.formDataLevels = function(db_server, db_name, db_group)
     {
         var self = this;
-        var url = self.formURLList(db_server, db_name, db_group, 'cache_config');
+        var url = self.formURLInfo(db_server, db_name, db_group, 'cache');
         var responseXML = self.httpGet(url);
         var item = responseXML.getElementsByTagName('Value');
-        var dataLevels = [];
-        for (var i = 0; i < item.length; i++)
-        {
-            dataLevels.push(item[i].getAttribute('name'));
-        }
-        return dataLevels;
-    };
+        var dataLevels = item[0].getAttribute('resolutions').split(',');
 
-    me.formMaxLevel = function(db_server, db_name, db_group)
-    {
-        var self = this;
-        var url = self.formURLList(db_server, db_name, db_group, 'max_resolution');
-        var responseXML = self.httpGet(url);
-        var item = responseXML.getElementsByTagName('Value');
-        return item[0].getAttribute('value');
+        return dataLevels;
     };
 
     me.formDbMask = function(db_server, db_name, db_group)
@@ -721,10 +732,7 @@ var dataCacher = function()
     me.formTableName = function(window)
     {
         var self = this;
-        var url = self.formURLGetTableName(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup(), window, 'get_table_name');
-        var responseXML = self.httpGet(url);
-        var items = responseXML.getElementsByTagName('Value');
-        var tableName = items[0].getAttribute('value');
+        var tableName = 'cache' + window + '__' + self.dataHandl.getDbServer() + '__' + self.dataHandl.getDbName() + '__' + self.dataHandl.getDbGroup();
         return tableName;
     };
 

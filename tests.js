@@ -29,7 +29,7 @@ module("class DataCacher");
 // });
 asyncTest("CheckChannelCount", 1, function() {
     DataCacher = new dataCacher();
-    DataCacher.getData("autogen", "hourly", "default", "6", "1109664922-1236327322", 50, function(data)
+    DataCacher.getData("autogen", "hourly", "default", "6", "1109664922-1236327322", 50, 'mean', function(data)
     {
         console.log(data);
         ok(true, "Ok");
