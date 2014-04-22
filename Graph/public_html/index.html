@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>dataCacher - qunit</title>   
+
+         <script src="./librarys/dataStream.js"></script> 
+         
+       
+        <script src="./helpers/dataHandler.js"></script>
+        <script src="./helpers/dateTimeFormat.js"></script>  
+        <script src="./rendering/detailChartRenderer.js"></script>
+        <script src="./rendering/masterChartRenderer.js"></script>
+        <script src="./datacaching/dataCacher.js"></script>
+        <script src="./datacaching/webSockets.js"></script>
+            <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+        
+<script type="text/javascript">
+
+//1362557722-1386144922
+//226688801-1205428001
+//1393920922-1395389722
+
+//1353312850-1354090450
+//1141546522-1236327322
+
+$(function() {
+    
+    graph = new detailChartRenderer();
+        graph.renderChart('detailChart', 'masterChart');
+    
+
+    
+
+//
+//    function mouseWheelHandler(e)
+//    {
+//        var e = window.event || e; 
+//        var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+//
+//        chart = $('#detailChart').highcharts();
+//var begTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', chart.xAxis[0].min);
+//var endTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', chart.xAxis[0].max);
+//begTime = (chart.xAxis[0].min/1000) + (1000000 * delta);
+//endTime = (chart.xAxis[0].max/1000) - (1000000 * delta);
+//begTime = (begTime.toString()).split('.')[0];
+//endTime = (endTime.toString()).split('.')[0];
+//    DataCacher.getData("autogen", "minutely", "default", "0,1,6", begTime + '-' + endTime, 300, 'max', function(obj) {
+//           
+//           console.log(obj);
+//        var ser = [];
+//                for(var i = 0; i < obj.data.length; i++)
+//                {       
+//                    var series = {data: [], name: "asdasd", pointInterval: 60 * 1000, dataGrouping: {enabled: false, groupPixelWidth: 2,approximation: 'average'}};
+//                    series.data = (obj.data[i]).slice(0);
+//                    series.name = obj.label[i];
+//                    for(var j = 0; j < obj.data[i].length; j++)
+//                    {
+//                        var pointData = obj.data[i][j];
+//                        series.data[j] = [];
+//                        series.data[j].push(parseFloat(obj.dateTime[j]) * 1000);
+//                        series.data[j].push(pointData);                        
+//                    }                   
+//                    ser.push(series);                 
+//                }
+//        for(var i = 0; i < ser.length; i++)
+//                {
+//                    chart.series[i].setData(ser[i].data);
+//                }             
+//    });
+//    }
+//
+//    var chartinggg = document.getElementById("detailChart");
+//    chartinggg.addEventListener("mousewheel", mouseWheelHandler, false);
+//
+//    DataCacher = new dataCacher();
+//    DataCacher.getData("autogen", "minutely", "default", "0,1,6", "1362584244-1391701044", 500, 'max', function(obj) {
+//        
+//                         
+//                var ser = [];
+//console.log(obj);
+//                for(var i = 0; i < obj.data.length; i++)
+//                {       
+//                    var series = {data: [], name: "asdasd",pointInterval:  60 * 1000, dataGrouping: {enabled: true, groupPixelWidth: 2, approximation: 'average'}};
+//                    series.data = (obj.data[i]).slice(0);
+//                    series.name = obj.label[i];                    
+//                    for(var j = 0; j < obj.data[i].length; j++)
+//                    {
+//                        var pointData = obj.data[i][j];
+//                        series.data[j] = [];
+//                        series.data[j].push(parseFloat(obj.dateTime[j]) * 1000);
+//                        series.data[j].push(pointData);
+//                    }
+//                    ser.push(series);
+//                }
+//                
+//                
+//
+//
+//        $('#detailChart').highcharts({
+//            chart: {
+//                        zoomType: 'xy',
+//                        events: {
+//                    selection : afterSetExtremes
+//                }
+//                                
+//            },
+//                    credits:
+//                            {
+//                                enabled: false
+//                            },
+//                    
+//                    navigator:
+//                            {
+//                                enabled:false,
+//                                maskFill: 'rgba(180, 198, 220, 0.75)',
+//                                height: 150,
+//                              adaptToUpdatedData: true,
+//                                baseSeries: 4,
+//                               
+//                                
+//                            },
+//
+//            
+//
+//            yAxis: {
+//                /*labels: {
+//                    formatter: function() {
+//                        return (this.value > 0 ? '+' : '') + this.value + '%';
+//                    }
+//                },
+//                plotLines: [{
+//                    value: 0,
+//                    width: 2,
+//                    color: 'silver'
+//                }]*/
+//            },
+//                    
+//                    xAxis : {
+//                       /* events : {
+//                    afterSetExtremes : setExtremes
+//                },*/
+//                                maxZoom: 60 * 1000,
+//                minRange: 60 * 1000 // one hour
+//            },
+//
+//            plotOptions: {
+//                series: {
+//                        marker: {
+//                            enabled: false,
+//                            states: {
+//                                hover: {
+//                                    enabled: true,
+//                                    
+//                                    
+//                                }
+//                                
+//                                
+//                            }
+//                        },
+//                        shadow: false,
+//                        states: {
+//                        hover: {
+//                            lineWidth: 2
+//                        }
+//                    },
+//                        threshold: null,
+//                    }
+//                      
+//
+//            },
+//
+//           tooltip: {
+//               shared:true,
+//                pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
+//                valueDecimals: 8,
+//                        animation: false,
+//                        xDateformat:  '%Y-%m-%d<br/>%H:%M',
+//                        enabled:true,
+//                        positioner: function () {
+//                return { x: 10, y: 35 };
+//            }
+//                        
+//                        
+//                       
+//            },
+//
+//            series: ser
+//        });
+//    });
+//        
+//        function afterSetExtremes(event) {
+//
+//chart = $('#detailChart').highcharts();chart
+//var begTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', event.xAxis[0].min);
+//var endTime = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', event.xAxis[0].max);
+//begTime = event.xAxis[0].min/1000;
+//endTime = event.xAxis[0].max/1000;
+//begTime = (begTime.toString()).split('.')[0];
+//endTime = (endTime.toString()).split('.')[0];
+//    DataCacher.getData("autogen", "minutely", "default", "0,1,6", begTime + '-' + endTime, 300, 'max', function(obj) {
+//           
+//           console.log(obj);
+//        var ser = [];
+//                for(var i = 0; i < obj.data.length; i++)
+//                {       
+//                    var series = {data: [], name: "asdasd", pointInterval: 60 * 1000, dataGrouping: {enabled: true, groupPixelWidth: 2,approximation: 'average'}};
+//                    series.data = (obj.data[i]).slice(0);
+//                    series.name = obj.label[i];
+//                    for(var j = 0; j < obj.data[i].length; j++)
+//                    {
+//                        var pointData = obj.data[i][j];
+//                        series.data[j] = [];
+//                        series.data[j].push(parseFloat(obj.dateTime[j]) * 1000);
+//                        series.data[j].push(pointData);                        
+//                    }                   
+//                    ser.push(series);                 
+//                }
+//        for(var i = 0; i < ser.length; i++)
+//                {
+//                    chart.series[i].setData(ser[i].data);
+//                }             
+//    });
+//
+//}
+//
+//function setExtremes(e) {
+//
+//                 var currentExtremes = this.getExtremes(),
+//        range = e.max - e.min,
+//        chart = $('#detailChart').highcharts();
+//    DataCacher.getData("autogen", "hourly", "default", "0,1", (Math.round(e.min)/1000) + '-' + (Math.round(e.max)/1000), 100, function(obj) {
+//           chart.options.zoomType = 'x';
+//           console.log(obj);
+//        var ser = [];
+//                for(var i = 0; i < obj.data.length; i++)
+//                {       
+//                    var series = {data: [], name: "asdasd", pointInterval: 3600 * 1000};
+//                    series.data = (obj.data[i]).slice(0);
+//                    series.name = obj.label[i];
+//                    for(var j = 0; j < obj.data[i].length; j++)
+//                    {
+//                        var pointData = obj.data[i][j];
+//                        series.data[j] = [];
+//                        series.data[j].push(new Date(obj.dateTime[j]).getTime());
+//                        series.data[j].push(pointData);
+//                    }                    
+//                    ser.push(series);
+//                    chart.series[i].addPoint(ser[i].data[j],false);
+//                }
+////      for(var i = 0; i < ser.length; i++)
+////                {
+////                    chart.series[i].addPoint(ser[i].data,false);
+////                }
+//               // chart.redraw();
+//    });
+//
+//}
+//1362584244-1391701044
+
+
+
+
+
+
+ //1296664786-1324053586
+});
+
+
+function clickme()
+{ 
+   graph.renderChart('detailChart', 'masterChart');  
+}
+</script>        
+</head>
+<body>
+
+                        <script src="./librarys/highstock.js"></script>
+
+  <script type="text/javascript" src="http://www.highcharts.com/highslide/highslide-full.min.js"></script>
+        <script type="text/javascript" src="http://www.highcharts.com/highslide/highslide.config.js" charset="utf-8"></script>
+         <link rel="stylesheet" type="text/css" href="http://www.highcharts.com/highslide/highslide.css" />
+         
+         <script src="./modules/data.js"></script>
+         <script src="./modules/exporting.js"></script>
+
+        
+        
+<div id="detailChart" style="height: 600px; width:800px"></div>
+<div id="masterChart" style="height: 200px; width:800px"></div>
+
+<input type="text" id="db_server" value="fpd"> <button onclick="clickme()">RENDER ME</button></br>
+ <input type="text" id="db_name" value="katrin_rep"></br>
+ <input type="text" id="db_group" value="0"></br>
+ <input type="text" id="beginTime" value="1296664786"></br>
+ <input type="text" id="endTime" value="1324053586"></br>
+ <input type="text" id="aggregation" value="mean"></br>
+ <input type="text" id="channels" value="102,103,104,105,106,107,108,109"></br>
+  <input type="text" id="channelid" value="0"></br>
+ 
+        
+
+
+ </body>
