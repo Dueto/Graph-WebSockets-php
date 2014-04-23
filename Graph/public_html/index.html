@@ -6,16 +6,23 @@
 
          <script src="./librarys/dataStream.js"></script> 
          
-       
+                
+          
+         <link rel="stylesheet" type="text/css" href="./css/jquery-ui-1.10.4.custom.min_1.css">
+         
         <script src="./helpers/dataHandler.js"></script>
         <script src="./helpers/dateTimeFormat.js"></script>  
         <script src="./rendering/detailChartRenderer.js"></script>
         <script src="./rendering/masterChartRenderer.js"></script>
         <script src="./datacaching/dataCacher.js"></script>
         <script src="./datacaching/webSockets.js"></script>
-            <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+          <!--  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script> /!-->
         
+          <script src="./librarys/jquery-1.10.2.js"></script>
+                        <script src="./librarys/jquery-ui-1.10.4.custom.min.js"></script>                       
 <script type="text/javascript">
+    
+    
 
 //1362557722-1386144922
 //226688801-1205428001
@@ -26,6 +33,7 @@
 
 $(function() {
     
+
     graph = new detailChartRenderer();
         graph.renderChart('detailChart', 'masterChart');
     
@@ -264,6 +272,8 @@ $(function() {
 
 
  //1296664786-1324053586
+ 
+ //1337769099-1355221899
 });
 
 
@@ -276,18 +286,18 @@ function clickme()
 <body>
 
                         <script src="./librarys/highstock.js"></script>
+                   
+                   
 
-  <script type="text/javascript" src="http://www.highcharts.com/highslide/highslide-full.min.js"></script>
-        <script type="text/javascript" src="http://www.highcharts.com/highslide/highslide.config.js" charset="utf-8"></script>
-         <link rel="stylesheet" type="text/css" href="http://www.highcharts.com/highslide/highslide.css" />
+
          
          <script src="./modules/data.js"></script>
          <script src="./modules/exporting.js"></script>
 
         
         
-<div id="detailChart" style="height: 600px; width:800px"></div>
-<div id="masterChart" style="height: 200px; width:800px"></div>
+<div id="detailChart" style="height: 600px; width:1000px"></div>
+<div id="masterChart" style="height: 200px; width:1000px"></div>
 
 <input type="text" id="db_server" value="fpd"> <button onclick="clickme()">RENDER ME</button></br>
  <input type="text" id="db_name" value="katrin_rep"></br>
@@ -296,8 +306,17 @@ function clickme()
  <input type="text" id="endTime" value="1324053586"></br>
  <input type="text" id="aggregation" value="mean"></br>
  <input type="text" id="channels" value="102,103,104,105,106,107,108,109"></br>
-  <input type="text" id="channelid" value="0"></br>
- 
+  <input type="text" id="channelid" value="0"></br> 
+
+
+ <!--<input type="text" id="db_server" value="autogen"> <button onclick="clickme()">RENDER ME</button></br>
+ <input type="text" id="db_name" value="hourly"></br>
+ <input type="text" id="db_group" value="default"></br>
+ <input type="text" id="beginTime" value="1337769099"></br>
+ <input type="text" id="endTime" value="1355221899"></br>
+ <input type="text" id="aggregation" value="mean"></br>
+ <input type="text" id="channels" value="0,1,2,3,4"></br>
+  <input type="text" id="channelid" value="0"></br> /!-->
         
 
 

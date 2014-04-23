@@ -1,4 +1,4 @@
-var dataHandler = function()
+var dataHandler = function(communicationType)
 {
     var me = {};
 
@@ -10,7 +10,10 @@ var dataHandler = function()
     me.db_mask = '';
     me.window = '';
     me.aggregation = '';
+    me.communicationType = communicationType;
 
+    me.lineSeparator = '\r\n';
+    me.separator = ',';
 
     me.beginTime = '';
     me.endTime = '';
@@ -40,7 +43,7 @@ var dataHandler = function()
                 aggregation = 'v';
             }
             var worker = new Worker('./datacaching/backgrDataCacher.js');
-            console.log(this.backCachers);
+            this.backCachers.push(worker);
             worker.postMessage(this.db_server + '<>'
                     + this.db_name + '<>'
                     + this.db_group + '<>'
@@ -51,7 +54,8 @@ var dataHandler = function()
                     + db_items + '<>'
                     + labels + '<>'
                     + datalevels + '<>'
-                    + aggregation);
+                    + aggregation + '<>'
+                    + this.communicationType);
         }
     };
 
@@ -308,11 +312,14 @@ var dataHandler = function()
 
     me.deleteWorkers = function()
     {
-        for (var i = 0; i < this.backCachers.length; i++)
+        if (this.backCachers.length !== 0)
         {
-            this.backCachers[i].terminate();
+            for (var i = 0; i < this.backCachers.length; i++)
+            {
+                this.backCachers[i].terminate();
+            }
+            this.backCachers = [];
         }
-        this.backCachers = [];
     };
 
     me.formatBeginUnixTime = function()
@@ -362,9 +369,67 @@ var dataHandler = function()
             }
         }
 
-        this.onEndOfWork({data: data, dateTime: dateTime});
+        this.onEndOfWork({data: data, dateTime: dateTime, label: this.labels});
     }
     ;
+
+    me.onMessageRecievedCsv = function(msg)
+    {
+        var self = this;
+        var rows = msg.split(self.lineSeparator);
+        var channelCount = rows[0].split(self.separator);
+        var dateTime = [];
+        var data = [];
+
+        for (var i = 1; i < channelCount.length; i++)
+        {
+            data.push([]);
+        }
+
+        for (var i = 1; i < rows.length - 1; i++)
+        {
+            var rowdata = rows[i].split(self.separator);
+            var time = self.formatToUnix(rowdata[0]);
+            dateTime.push(time);
+            for (var j = 0; j < rowdata.length - 1; j++)
+            {
+                data[j].push(parseFloat(rowdata[j + 1]));
+            }
+        }
+
+        this.onEndOfWork({data: data, dateTime: dateTime, label: this.labels});
+    };
+
+    me.onMessageRecievedBinary = function(msg)
+    {
+        var dataStream = new DataStream(msg);
+        dataStream.readString(1);
+        dataStream.endianness = dataStream.BIG_ENDIAN;
+        var dateTime = [];
+        var data = [];
+        for (var i = 0; i < this.db_mask.length; i++)
+        {
+            data.push([]);
+        }
+        try
+        {
+            while (!dataStream.isEof())
+            {
+                var time = dataStream.readString(26);
+                dateTime.push(this.formatToUnix(time));
+                for (var i = 0; i < this.db_mask.length; i++)
+                {
+                    data[i].push(dataStream.readFloat64(true));
+                }
+            }
+        }
+        catch (err)
+        {
+            console.log(err);
+            console.log(String.fromCharCode.apply(null, new Uint16Array(msg.data)));
+        }
+        this.onEndOfWork({data: data, dateTime: dateTime, label: this.labels});
+    };
 
     me.formatToUnix = function(time)
     {

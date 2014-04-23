@@ -43,6 +43,22 @@ var dateTimeFormat = function()
         return Time;
     };
 
+
+    me.formatTime = function(window)
+    {
+        var beginTime = window.split('-')[0];
+        var endTime = window.split('-')[1];
+        if (beginTime.indexOf('.') - 1)
+        {
+            beginTime = beginTime.split('.')[0];
+        }
+        if (endTime.indexOf('.') - 1)
+        {
+            endTime = endTime.split('.')[0];
+        }
+        return {begTime: beginTime, endTime: endTime};
+    };
+
     me.splitTimeFromUnix = function(window)
     {
         var Microsec = window.split('.')[1];

@@ -18,10 +18,8 @@ var detailChartRenderer = function()
     me.tooltipX = 10;
     me.tooltipY = 35;
     me.mouseDown = 0;
-    me.cloneToolTip = null;
-    me.cloneToolTip2 = null;
 
-    me.db = new dataCacher();
+    me.db = new dataCacher('websockets', true, true, false, false);
     me.channels = '';
     me.allChannels = '';
     me.aggregation = '';
@@ -65,7 +63,7 @@ var detailChartRenderer = function()
                             for (var i = 0; i < obj.data.length; i++)
                             {
                                 var series = {data: [], name: '', pointInterval: self.dataSourceLevel * 1000};
-                                series.data = (obj.data[i]).slice(0);
+                                series.data = (obj.data[i]);
                                 series.name = obj.label[i];
                                 for (var j = 0; j < obj.data[i].length; j++)
                                 {
@@ -253,7 +251,7 @@ var detailChartRenderer = function()
                             for (var i = 0; i < obj.data.length; i++)
                             {
                                 var series = {data: [], name: '', pointInterval: self.dataSourceLevel * 1000};
-                                series.data = (obj.data[i]).slice(0);
+                                series.data = (obj.data[i]);
                                 series.name = obj.label[i];
                                 for (var j = 0; j < obj.data[i].length; j++)
                                 {
@@ -305,7 +303,7 @@ var detailChartRenderer = function()
                             for (var i = 0; i < obj.data.length; i++)
                             {
                                 var series = {data: [], name: '', pointInterval: self.dataSourceLevel * 1000};
-                                series.data = (obj.data[i]).slice(0);
+                                series.data = (obj.data[i]);
                                 series.name = obj.label[i];
                                 for (var j = 0; j < obj.data[i].length; j++)
                                 {
@@ -330,14 +328,16 @@ var detailChartRenderer = function()
         }
     };
 
-    me.zoomChart = function(beginTime, endTime, minvalue, maxvalue)
+    me.zoomChart = function(beginTime, endTime)
     {
         var self = this;
         var xAxis = self.chart.xAxis[0];
         var yAxis = self.chart.yAxis[0];
         xAxis.setExtremes(beginTime * 1000, endTime * 1000);
-        //yAxis.setExtremes(minvalue, maxvalue);
-        //xAxis.update();
+        var maxvalue = self.chart.yAxis[0].max;
+        var minvalue = self.chart.yAxis[0].min;
+        yAxis.setExtremes(minvalue + (self.delta * minvalue / 5), maxvalue - (self.delta * minvalue / 5));
+        // xAxis.update();
 
         self.timer = setTimeout(function()
         {
@@ -353,16 +353,11 @@ var detailChartRenderer = function()
         self.delta = self.delta + Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
         var btime = self.chart.xAxis[0].min / 1000;
         var etime = self.chart.xAxis[0].max / 1000;
-        var maxvalue = self.chart.yAxis[0].max;
-        var minvalue = self.chart.yAxis[0].min;
-        var valuediffrence = (maxvalue - minvalue) / self.zoomMultiplier;
         var diffrence = (etime - btime) / self.zoomMultiplier;
         var begTime = btime + (diffrence * self.delta);
         var endTime = etime - (diffrence * self.delta);
-        minvalue = minvalue + (valuediffrence * self.delta);
-        maxvalue = maxvalue - (valuediffrence * self.delta);
         self.delta = 0;
-        self.zoomChart(begTime, endTime, minvalue, maxvalue);
+        self.zoomChart(begTime, endTime);
 
     };
 
@@ -396,7 +391,7 @@ var detailChartRenderer = function()
         return title;
     };
 
-    me.showLabels = function()
+    me.showLabels = function(e)
     {
         var self = this;
 //        if (self.cloneToolTip)
@@ -413,15 +408,34 @@ var detailChartRenderer = function()
 //        self.cloneToolTip2 = $('.highcharts-tooltip').clone();
 //        $(self.chart.container).append(self.cloneToolTip2);
 
-        hs.htmlExpand(null, {
-            pageOrigin: {
-                x: this.pageX,
-                y: this.pageY
-            },
-            headingText: this.series.name,
-            maincontentText: Highcharts.dateFormat('%A, %b %e, %Y', this.x) + ':<br/> ' +
-                    this.y + '',
-            width: 300});
+//        hs.htmlExpand(null, {
+//            pageOrigin: {
+//                x: this.pageX,
+//                y: this.pageY
+//            },
+//            headingText: this.series.name,
+//            maincontentText: /*Highcharts.dateFormat('%Y-%m-%d<br/>%H:%M:%S', this.x)*/ this.x + '<br/> ' +
+//                    this.y + '',
+//            width: 300});
+
+        var message = '<table class="message" id="message' + this.x + '" style="border:1px solid #666!important;">';
+        //message = message + '<caption>'+ point.series.name +'</caption>';
+        message = message + '<tbody>';
+        message = message + '<tr><th>Point</th><td class="num">' + Highcharts.dateFormat('%Y-%m-%d<br/>%H:%M:%S', this.x) + '</td></tr>';
+        message = message + '<tr><th>Value</th><td class="num">' + this.y + '</td></tr>';
+
+        $(message).dialog({
+            dialogClass: 'tooltip-dailog',
+            title: this.series.name,
+            position: [e.clientX + 10, e.clientY + 10],
+            closeText: 'Close',
+            width: 'auto',
+            maxWidth: 1000,
+            height: 'auto',
+            close: function() {
+                $('#message' + this.x).remove();
+            }
+        });
 
     };
 

@@ -1,10 +1,14 @@
-var dataCacher = function()
+var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, isCacheCurrent)
 {
     var me = {};
 
-    me.dataHandl = new dataHandler();
+    me.dataHandl = new dataHandler(communicationType);
     me.dateHelper = new dateTimeFormat();
-    me.webSocket = new webSockets('ws://localhost:12345');
+    me.communicationType = communicationType;
+    me.isCache = isCache;
+    me.isCacheDown = isCacheDown;
+    me.isCacheUp = isCacheUp;
+    me.isCacheCurrent = isCacheCurrent;
 
     me.db = '';
     me.clientsCallback = '';
@@ -138,15 +142,13 @@ var dataCacher = function()
             {
                 if (results.rows.length == 0)
                 {
-                    self.dataHandl.setReadingMode(true);
-                    self.webSocket.sendMessage(self.tableName + ';' + self.dataHandl.getWindow() + ';' + '1' + ';' + self.dataHandl.getAggregation() + ';' + self.dataHandl.getDbMask().length + ';' + self.dataHandl.formDbMask() + ';');
+                    self.requestData(self.dataHandl.getWindow());
                 }
                 else
                 {
                     var idDataSource = results.rows.item(0).id;
-                    var beginTime = self.dataHandl.getWindow().split('-')[0].split('.')[0];
-                    var endTime = self.dataHandl.getWindow().split('-')[1].split('.')[0];
-                    var sqlStatement = 'SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + endTime + '" AND (DateTime) >= "' + beginTime + '" ORDER BY DateTime';
+                    var time = self.dateHelper.formatTime(self.dataHandl.getWindow());
+                    var sqlStatement = 'SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + time.endTime + '" AND (DateTime) >= "' + time.begTime + '" ORDER BY DateTime';
                     req.executeSql(sqlStatement, [], self.onReturnResult.bind(self));
 
                 }
@@ -160,6 +162,42 @@ var dataCacher = function()
     };
 
 
+    me.requestData = function(window)
+    {
+        var self = this;
+        var time = self.dateHelper.formatTime(window);
+        switch (self.communicationType)
+        {
+            case 'websockets':
+                self.dataHandl.setReadingMode(true);
+                self.webSocket.sendMessage(self.tableName + ';' + window + ';' + '1' + ';' + self.dataHandl.getAggregation() + ';' + self.dataHandl.getDbMask().length + ';' + self.dataHandl.formDbMask() + ';');
+                break;
+            case 'httpgetcsv':
+                var url = self.formURLGetCsv(
+                        self.dataHandl.getDbServer(),
+                        self.dataHandl.getDbName(),
+                        self.dataHandl.getDbGroup(),
+                        self.dataHandl.formDbMask(),
+                        time.begTime + '-' + time.endTime,
+                        self.level.window);
+                self.httpGetCsv(url, self.dataHandl.onMessageRecievedCsv.bind(self.dataHandl));
+                break;
+            case 'httpgetbinary':
+                self.dataHandl.setReadingMode(true);
+                var url = self.formURLGetBinary(
+                        self.dataHandl.getDbServer(),
+                        self.dataHandl.getDbName(),
+                        self.dataHandl.getDbGroup(),
+                        self.dataHandl.formDbMask(),
+                        time.begTime + '-' + time.endTime,
+                        self.level.window);
+                self.httpGetBinary(url, self.dataHandl.onMessageRecievedBinary.bind(self.dataHandl));
+
+                break;
+        }
+
+    };
+
     me.onReturnResult = function(req, res)
     {
         var self = this;
@@ -172,17 +210,12 @@ var dataCacher = function()
                 var labels = [];
                 self.dataHandl.concatRowData(res, dataBuffer, dateTime);
                 labels = self.dataHandl.getLabels();
-                var clone = self.splitData({data: dataBuffer, dateTime: dateTime, label: labels});
 
-                self.startBackgroundCachers();
-                //var backgrDataLevel = self.dataHandl.getDataLevelForBackgr(self.level);
-                //var tableNameForBackgr = self.formTableName(backgrDataLevel.window);
-                // if (parseInt(self.level.window) != 0)
-                //{
-                // self.dataHandl.startBackgroundCaching(backgrDataLevel, self.columns, tableNameForBackgr);
-                //}
-
-                self.clientsCallback(clone);
+                if (self.isCache)
+                {
+                    self.startBackgroundCachers();
+                }
+                self.clientsCallback({data: dataBuffer, dateTime: dateTime, label: labels});
             }
 
             else
@@ -198,36 +231,37 @@ var dataCacher = function()
     me.startBackgroundCachers = function()
     {
         var self = this;
-        var backgrDataLevel = self.dataHandl.getDataLevelForBackgr(self.level);
-        //var upDataLevel = self.dataHandl.getDataLevelForUp(self.level);
-        var tableNameForBackgr = self.formTableName(backgrDataLevel.window);
-        //var tableNameForUp = self.formTableName(upDataLevel.window);
-
-        //if (parseInt(self.level.window) != self.dataHandl.dataLevel[0])
-        //{
-        //    self.dataHandl.startBackgroundCaching(upDataLevel, self.columns, tableNameForUp);
-        //}
-        if (parseInt(self.level.window) != 0)
+        if (parseInt(self.level.window) != self.dataHandl.dataLevel[0] && self.isCacheUp === true)
         {
+            var upDataLevel = self.dataHandl.getDataLevelForUp(self.level);
+            var tableNameForUp = self.formTableName(upDataLevel.window);
+            self.dataHandl.startBackgroundCaching(upDataLevel, self.columns, tableNameForUp);
+        }
+        if (parseInt(self.level.window) != 0 && self.isCacheDown === true)
+        {
+            var backgrDataLevel = self.dataHandl.getDataLevelForBackgr(self.level);
+            var tableNameForBackgr = self.formTableName(backgrDataLevel.window);
             self.dataHandl.startBackgroundCaching(backgrDataLevel, self.columns, tableNameForBackgr);
         }
-        //var beginTime = parseFloat(self.dataHandl.getBeginTime());
-        //var endTime = parseFloat(self.dataHandl.getEndTime());
-        //var diffrence = endTime - beginTime;
-        //var needenLeftTime = beginTime - diffrence;
-        //var needenRightTime = endTime + diffrence;
-        //self.dataHandl.setBeginTime(needenLeftTime);
-        //self.dataHandl.setEndTime(needenRightTime);
-        //self.dataHandl.setWindow(needenLeftTime + '-' + needenRightTime);
-        //self.dataHandl.startBackgroundCaching(self.level, self.columns, self.tableName);
+        if (self.isCacheCurrent === true)
+        {
+            var beginTime = parseFloat(self.dataHandl.getBeginTime());
+            var endTime = parseFloat(self.dataHandl.getEndTime());
+            var diffrence = endTime - beginTime;
+            var needenLeftTime = beginTime - diffrence;
+            var needenRightTime = endTime + diffrence;
+            self.dataHandl.setBeginTime(needenLeftTime);
+            self.dataHandl.setEndTime(needenRightTime);
+            self.dataHandl.setWindow(needenLeftTime + '-' + needenRightTime);
+            self.dataHandl.startBackgroundCaching(self.level, self.columns, self.tableName);
+        }
     };
 
     me.insertNeedenDataBckgr = function(window)
     {
         var self = this;
-        self.dataHandl.setReadingMode(true);
-        self.webSocket.sendMessage(self.tableName + ';' + window + ';' + '1' + ';' + self.dataHandl.getAggregation() + ';' + self.dataHandl.getDbMask().length + ';' + self.dataHandl.formDbMask() + ';');
-    }
+        self.requestData(window);
+    };
 
     me.splitData = function(objData)
     {
@@ -252,26 +286,20 @@ var dataCacher = function()
         {
             if (objData.data[0].length < 10000)
             {
-                var clone = self.splitData(objData);
-
                 if (!self.isFirefox)
                 {
-
-                    //self.dataHandl.startBackgroundCaching(self.level, self.columns, self.tableName);
-                    // var backgrDataLevel = self.dataHandl.getDataLevelForBackgr(self.level);
-                    //var tableNameForBackgr = self.formTableName(backgrDataLevel.window);
-                    //if (parseInt(self.level.window) != 0)
-                    //{
-                    //self.dataHandl.startBackgroundCaching(backgrDataLevel, self.columns, tableNameForBackgr);
-                    //}
-                    self.startBackgroundCachers();
+                    if (self.isCache)
+                    {
+                        self.dataHandl.startBackgroundCaching(self.level, self.columns, self.tableName);
+                        self.startBackgroundCachers();
+                    }
                 }
-                self.clientsCallback(clone);
+                self.clientsCallback(objData);
             }
             else
             {
                 self.clientsCallback(objData);
-                throw 'Too much points in request.'
+                console.log('Too much points in request.')
             }
         }
         else
@@ -384,7 +412,7 @@ var dataCacher = function()
     {
         var self = this;
         var url = self.formURLInfo(db_server, db_name, db_group, 'cache');
-        var responseXML = self.httpGet(url);
+        var responseXML = self.httpGetXml(url);
         var item = responseXML.getElementsByTagName('Value');
         var dataLevels = item[0].getAttribute('resolutions').split(',');
 
@@ -395,7 +423,7 @@ var dataCacher = function()
     {
         var self = this;
         var url = self.formURLList(db_server, db_name, db_group, 'items');
-        var responseXML = self.httpGet(url);
+        var responseXML = self.httpGetXml(url);
         var items = responseXML.getElementsByTagName('Value');
         var db_mask = [];
         for (var i = 0; i < items.length; i++)
@@ -445,7 +473,7 @@ var dataCacher = function()
     {
         var self = this;
         var url = self.formURLLabel(self.dataHandl.getDbServer(), self.dataHandl.getDbName(), self.dataHandl.getDbGroup(), self.dataHandl.getDbMask(), 'items');
-        var responseXML = self.httpGet(url);
+        var responseXML = self.httpGetXml(url);
         var items = responseXML.getElementsByTagName('Value');
         var labels = [];
 
@@ -466,7 +494,7 @@ var dataCacher = function()
         return values;
     };
 
-    me.httpGet = function(url)
+    me.httpGetXml = function(url)
     {
         var xmlHttp = null;
 
@@ -476,14 +504,75 @@ var dataCacher = function()
         return xmlHttp.responseXML;
     };
 
+    me.httpGetCsv = function(url, callback)
+    {
+        var xmlHttp = null;
+
+        xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function()
+        {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            {
+
+                callback(xmlHttp.responseText);
+            }
+        };
+        xmlHttp.open("GET", url, true);
+        xmlHttp.send(null);
+    };
+
+    me.httpGetBinary = function(url, callback)
+    {
+        var xmlHttp = null;
+
+        xmlHttp = new XMLHttpRequest();
+        xmlHttp.onload = function()
+        {
+            callback(xmlHttp.response);
+        };
+        xmlHttp.open("GET", url, true);
+        xmlHttp.responseType = "arraybuffer";
+        xmlHttp.send(null);
+    };
+
+    me.formURLGetCsv = function(db_server, db_name, db_group, db_mask, window, level)
+    {
+        var url = 'http://katrin.kit.edu/adei/services/getdata.php?db_server=' + db_server
+                + '&db_name=' + db_name
+                + '&db_group=' + db_group
+                + '&db_mask=' + db_mask
+                + '&experiment=' + window
+                + '&window=0'
+                + '&resample=' + level
+                + '&format=csv';
+        return url;
+    };
+
+    me.formURLGetBinary = function(db_server, db_name, db_group, db_mask, window, level)
+    {
+        var url = 'http://katrin.kit.edu/adei/services/getdata.php?db_server=' + db_server
+                + '&db_name=' + db_name
+                + '&db_group=' + db_group
+                + '&db_mask=' + db_mask
+                + '&experiment=' + window
+                + '&window=0'
+                + '&resample=' + level
+                + '&format=binary';
+        return url;
+    };
+
     me.openDataBase('DB');
     me.formDataBase();
 
-    me.webSocket.openSocket();
-    me.webSocket.setOnOpenCallback(me.onOpenSocket);
-    me.webSocket.setOnCloseCallback(me.onCloseSocket);
-    me.webSocket.setOnErrorCallback(me.onErrorSocket);
-    me.webSocket.setOnMessageCallback(me.dataHandl.onMessageRecieved.bind(me.dataHandl));
+    if (me.communicationType === 'websockets')
+    {
+        me.webSocket = new webSockets('ws://localhost:12345');
+        me.webSocket.openSocket();
+        me.webSocket.setOnOpenCallback(me.onOpenSocket);
+        me.webSocket.setOnCloseCallback(me.onCloseSocket);
+        me.webSocket.setOnErrorCallback(me.onErrorSocket);
+        me.webSocket.setOnMessageCallback(me.dataHandl.onMessageRecieved.bind(me.dataHandl));
+    }
 
     me.dataHandl.setOnEndOfWorkCallback(me.onReadyFormingData.bind(me));
 
