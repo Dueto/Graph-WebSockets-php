@@ -435,7 +435,7 @@ var dataHandler = function(communicationType)
     {
         var date = time.split('.')[0];
         var milisec = time.split('.')[1];
-        var unix = (Date.parse(date) / 1000) + '.' + milisec;
+        var unix = ((new Date(date.replace(' ', 'T')).getTime()) / 1000) + '.' + milisec;
         return unix;
     };
 

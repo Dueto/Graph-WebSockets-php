@@ -274,7 +274,10 @@ function onReturnResult(req, results)
         if (beginTime >= returnedBeginTime && endTime <= returnedEndTime)
         {
             console.log('Background: exist - ' + level);
-            socket.closeSocket();
+            if (communicationType === 'websockets')
+            {
+                socket.closeSocket();
+            }
             self.close();
         }
         if (returnedBeginTime > beginTime && returnedEndTime == endTime)

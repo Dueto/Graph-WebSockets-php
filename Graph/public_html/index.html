@@ -281,6 +281,11 @@ function clickme()
 { 
    graph.renderChart('detailChart', 'masterChart');  
 }
+
+function addDataSource()
+{
+    graph.addDataSource();
+}
 </script>        
 </head>
 <body>
@@ -295,17 +300,24 @@ function clickme()
          <script src="./modules/exporting.js"></script>
 
         
-        
-<div id="detailChart" style="height: 600px; width:1000px"></div>
-<div id="masterChart" style="height: 200px; width:1000px"></div>
+             <div id="masterChart" style="height: 150px; width:1000px">
+              
+             </div>   
+
+   
+         <div id="detailChart" style="height: 800px; width:1000px"> 
+               
+         </div>
+         
 
 <input type="text" id="db_server" value="fpd"> <button onclick="clickme()">RENDER ME</button></br>
+ <button onclick="addDataSource()">ADD DATA SOURCE</button></br>
  <input type="text" id="db_name" value="katrin_rep"></br>
  <input type="text" id="db_group" value="0"></br>
  <input type="text" id="beginTime" value="1296664786"></br>
  <input type="text" id="endTime" value="1324053586"></br>
  <input type="text" id="aggregation" value="mean"></br>
- <input type="text" id="channels" value="102,103,104,105,106,107,108,109"></br>
+ <input type="text" id="channels" value="102,103,104,105,106,107,108,109,110,111"></br>
   <input type="text" id="channelid" value="0"></br> 
 
 

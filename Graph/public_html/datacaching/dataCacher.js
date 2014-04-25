@@ -20,6 +20,13 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
     me.aggregation = '';
     me.isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
+    if (me.isFirefox)
+    {
+        me.isCache = false;
+        me.isCacheDown = false;
+        me.isCacheUp = false;
+        me.isCacheCurrent = false;
+    }
     me.getData = function(db_server,
             db_name,
             db_group,
@@ -53,61 +60,86 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
         }
         else
         {
-            self.db.transaction(function(req)
+            if (!self.isFirefox)
             {
-                var sql = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) \n\
-                                                      AND ((db_group="' + db_group + '") AND (aggregation="' + aggregation + '")) \n\
-                                                      AND (db_items="' + db_items + '")';
-                req.executeSql(sql, [], function(req, results)
+                self.db.transaction(function(req)
                 {
-                    if (results.rows.length == 0)
+                    var sql = 'SELECT * FROM DataSource WHERE ((db_server="' + db_server + '") AND (db_name="' + db_name + '")) AND ((db_group="' + db_group + '") AND (aggregation="' + aggregation + '")) AND (db_items="' + db_items + '")';
+                    req.executeSql(sql, [], function(req, results)
                     {
-                        if (db_mask != 'all')
+                        if (results.rows.length == 0)
                         {
-                            self.db_items = db_items;
-                            //db_mask = self.formDbMask(db_server, db_name, db_group);
-                            db_mask = self.db_items;
+                            if (db_mask != 'all')
+                            {
+                                self.db_items = db_items;
+                                //db_mask = self.formDbMask(db_server, db_name, db_group);
+                                db_mask = self.db_items;
+                            }
+                            else
+                            {
+                                db_mask = self.formDbMask(db_server, db_name, db_group);
+                                self.db_items = db_mask;
+                            }
+                            var dataLevels = self.formDataLevels(db_server, db_name, db_group);
+                            self.dataHandl.setDataLevels(dataLevels.reverse());
+                            self.dataHandl.setAggregation(aggregation);
+                            self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
+                            self.level = self.dataHandl.level;
+                            self.columns = self.formTableColumns();
+                            self.dataHandl.setLabels(self.formLabels());
+                            self.tableName = self.formTableName(self.level.window);
+
+                            self.onReadyFormingRequest();
                         }
                         else
                         {
-                            db_mask = self.formDbMask(db_server, db_name, db_group);
-                            self.db_items = db_mask;
-                        }
-                        var dataLevels = self.formDataLevels(db_server, db_name, db_group);
-                        self.dataHandl.setDataLevels(dataLevels.reverse());
-                        self.dataHandl.setAggregation(aggregation);
-                        self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
-                        self.level = self.dataHandl.level;
-                        self.columns = self.formTableColumns();
-                        self.dataHandl.setLabels(self.formLabels());
-                        self.tableName = self.formTableName(self.level.window);
+                            if (db_mask != 'all')
+                            {
+                                self.db_items = db_mask.split(',');
+                                db_mask = results.rows.item(0).db_items.split(',');
+                            }
+                            else
+                            {
+                                db_mask = results.rows.item(0).db_items.split(',');
+                                self.db_items = db_mask;
+                            }
+                            self.dataHandl.setDataLevels(results.rows.item(0).datalevels.split(','));
+                            self.dataHandl.setAggregation(results.rows.item(0).aggregation);
+                            self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
+                            self.dataHandl.setLabels(results.rows.item(0).labels.split(','));
+                            self.columns = self.formTableColumns();
+                            self.level = self.dataHandl.level;
+                            self.tableName = self.formTableName(self.level.window);
 
-                        self.onReadyFormingRequest();
-                    }
-                    else
-                    {
-                        if (db_mask != 'all')
-                        {
-                            self.db_items = db_mask.split(',');
-                            db_mask = results.rows.item(0).db_items.split(',');
+                            self.onReadyFormingRequest();
                         }
-                        else
-                        {
-                            db_mask = results.rows.item(0).db_items.split(',');
-                            self.db_items = db_mask;
-                        }
-                        self.dataHandl.setDataLevels(results.rows.item(0).datalevels.split(','));
-                        self.dataHandl.setAggregation(results.rows.item(0).aggregation);
-                        self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
-                        self.dataHandl.setLabels(results.rows.item(0).labels.split(','));
-                        self.columns = self.formTableColumns();
-                        self.level = self.dataHandl.level;
-                        self.tableName = self.formTableName(self.level.window);
-
-                        self.onReadyFormingRequest();
-                    }
+                    }, self.onErrorSql);
                 });
-            });
+            }
+            else
+            {
+                if (db_mask != 'all')
+                {
+                    self.db_items = db_items;
+                    //db_mask = self.formDbMask(db_server, db_name, db_group);
+                    db_mask = self.db_items;
+                }
+                else
+                {
+                    db_mask = self.formDbMask(db_server, db_name, db_group);
+                    self.db_items = db_mask;
+                }
+                var dataLevels = self.formDataLevels(db_server, db_name, db_group);
+                self.dataHandl.setDataLevels(dataLevels.reverse());
+                self.dataHandl.setAggregation(aggregation);
+                self.dataHandl.setNewRequest(db_server, db_name, db_group, db_mask, window, pointCount);
+                self.level = self.dataHandl.level;
+                self.columns = self.formTableColumns();
+                self.dataHandl.setLabels(self.formLabels());
+                self.tableName = self.formTableName(self.level.window);
+
+                self.onReadyFormingRequest();
+            }
         }
 
 
@@ -135,30 +167,40 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
     me.onReadyFormingRequest = function()
     {
         var self = this;
-        self.db.transaction(function(req)
+        if (!self.isFirefox)
         {
-            var sqlStatement = self.formDataSourceStatement();
-            req.executeSql(sqlStatement, [], function(req, results)
-            {
-                if (results.rows.length == 0)
-                {
-                    self.requestData(self.dataHandl.getWindow());
-                }
-                else
-                {
-                    var idDataSource = results.rows.item(0).id;
-                    var time = self.dateHelper.formatTime(self.dataHandl.getWindow());
-                    var sqlStatement = 'SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  "' + time.endTime + '" AND (DateTime) >= "' + time.begTime + '" ORDER BY DateTime';
-                    req.executeSql(sqlStatement, [], self.onReturnResult.bind(self));
 
-                }
+            self.db.transaction(function(req)
+            {
+                var sqlStatement = self.formDataSourceStatement();
+                req.executeSql(sqlStatement, [], function(req, results)
+                {
+
+                    if (results.rows.length == 0)
+                    {
+                        self.requestData(self.dataHandl.getWindow());
+                    }
+                    else
+                    {
+                        var idDataSource = results.rows.item(0).id;
+                        var time = self.dateHelper.formatTime(self.dataHandl.getWindow());
+                        var sqlStatement = 'SELECT * FROM "' + idDataSource + '" WHERE  (DateTime) <=  ' + parseInt(time.endTime) + ' AND (DateTime) >= ' + parseInt(time.begTime) + ' ORDER BY DateTime';
+                        req.executeSql(sqlStatement, [], self.onReturnResult.bind(self));
+
+                    }
+
+
+                },
+                        self.onErrorSql);
 
             },
-                    self.onErrorSql);
-
-        },
-                self.onError,
-                self.onReadyTransaction);
+                    self.onError,
+                    self.onReadyTransaction);
+        }
+        else
+        {
+            self.requestData(self.dataHandl.getWindow());
+        }
     };
 
 
@@ -203,7 +245,7 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
         var self = this;
         if (!self.isFirefox)
         {
-            if (res.rows.length != 0)
+            if (res.rows.length !== 0)
             {
                 var dataBuffer = [];
                 var dateTime = [];
@@ -290,6 +332,7 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
                 {
                     if (self.isCache)
                     {
+
                         self.dataHandl.startBackgroundCaching(self.level, self.columns, self.tableName);
                         self.startBackgroundCachers();
                     }
@@ -314,7 +357,7 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
     {
         if (this.db == '')
         {
-            this.db = openDatabase(name, '1.0', '', 50 * 1024 * 1024);
+            this.db = openDatabase(name, '1.0', '', 50 * 1024 * 1024) || window.openDatabase(name, '1.0', '', 50 * 1024 * 1024);
         }
     };
 
@@ -322,8 +365,7 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
     {
         this.db.transaction(function(req)
         {
-            req.executeSql('CREATE TABLE IF NOT EXISTS DataSource \n\
-                                (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, aggregation, level, db_items, labels, datalevels)', [],
+            req.executeSql('CREATE TABLE IF NOT EXISTS DataSource (id INTEGER PRIMARY KEY AUTOINCREMENT,db_server,db_name,db_group, aggregation, level, db_items, labels, datalevels)', [],
                     function(res, rows) {
                     },
                     this.onErrorSql);
@@ -359,6 +401,7 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
 
     me.onErrorSocket = function(msg)
     {
+        this.communicationType = 'httpgetbinary';
         console.log(msg);
     };
 
@@ -566,11 +609,11 @@ var dataCacher = function(communicationType, isCache, isCacheDown, isCacheUp, is
 
     if (me.communicationType === 'websockets')
     {
-        me.webSocket = new webSockets('ws://localhost:12345');
+        me.webSocket = new webSockets('ws://ipecluster5.ipe.kit.edu:12345');
         me.webSocket.openSocket();
         me.webSocket.setOnOpenCallback(me.onOpenSocket);
         me.webSocket.setOnCloseCallback(me.onCloseSocket);
-        me.webSocket.setOnErrorCallback(me.onErrorSocket);
+        me.webSocket.setOnErrorCallback(me.onErrorSocket.bind(me));
         me.webSocket.setOnMessageCallback(me.dataHandl.onMessageRecieved.bind(me.dataHandl));
     }
 
