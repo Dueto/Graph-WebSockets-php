@@ -22,7 +22,7 @@ self.addEventListener('message', function(e)
 });
 
 db = openDatabase('DB', '1.0', '', 50 * 1024 * 1024);
-socket = webSockets('ws://localhost:12345');
+socket = webSockets('ws://ipecluster5.ipe.kit.edu:12345');
 
 
 startBackgroundCaching = function()
@@ -31,9 +31,10 @@ startBackgroundCaching = function()
     switch (communicationType)
     {
         case 'websockets':
-            socket.openSocket();
-            socket.setOnOpenCallback(onReady);
-            socket.setOnMessageCallback(onMessageRecieved);
+            onReady();
+            //socket.openSocket();
+            //socket.setOnOpenCallback(onReady);
+            //socket.setOnMessageCallback(onMessageRecieved);
             break;
         case 'httpgetcsv':
             onReady();
@@ -271,38 +272,43 @@ function onReturnResult(req, results)
 
         console.log(tableName + ';' + '1' + ';' + aggregation + ';' + channelCount + ';' + db_items);
 
-        if (beginTime >= returnedBeginTime && endTime <= returnedEndTime)
+        if (beginTime === returnedBeginTime && endTime === returnedEndTime)
         {
             console.log('Background: exist - ' + level);
-            if (communicationType === 'websockets')
-            {
-                socket.closeSocket();
-            }
             self.close();
+            return;
         }
-        if (returnedBeginTime > beginTime && returnedEndTime == endTime)
+        if (returnedBeginTime > beginTime && returnedEndTime === endTime)
         {
             console.log('Background: left - ' + level);
             var needenTime = beginTime + '-' + returnedBeginTime;
-            requestData(needenTime);
+            request(needenTime);
+            return;
         }
-        if (returnedBeginTime == beginTime && returnedEndTime < endTime)
+        if (returnedBeginTime === beginTime && returnedEndTime < endTime)
         {
             console.log('Background: right - ' + level);
             var needenTime = returnedEndTime + '-' + endTime;
-            requestData(needenTime);
+            request(needenTime);
+            return;
         }
         if (beginTime < returnedBeginTime && endTime > returnedEndTime)
         {
             console.log('Background: everithing - ' + level);
             var needenTime = beginTime + '-' + endTime;
-            requestData(needenTime);
+            request(needenTime);
+            return;
         }
+        if (communicationType === 'websockets')
+        {
+            //socket.closeSocket();
+        }
+        //requestData(beginTime + '-' + endTime);
     }
     else
     {
-        console.log('nothing' + level);
-        requestData(window);
+        console.log('Background: nothing' + level);
+        request(window);
     }
 }
 ;
@@ -321,6 +327,25 @@ function formatUnixTime(time, aggregator)
         return time;
     }
 
+}
+;
+
+function request(needenTime)
+{
+    var time = needenTime;
+    if (communicationType === 'websockets')
+    {
+        socket.openSocket();
+        socket.setOnOpenCallback(function()
+        {
+            requestData(time);
+        });
+        socket.setOnMessageCallback(onMessageRecieved);
+    }
+    else
+    {
+        requestData(time);
+    }
 }
 ;
 

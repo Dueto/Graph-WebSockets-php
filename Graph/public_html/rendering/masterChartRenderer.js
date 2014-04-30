@@ -4,19 +4,23 @@ var masterChartRenderer = function()
 
     me.id = '';
     me.zoomCallback = '';
-    me.series = {};
+    me.chart = '';
+    me.series = [];
 
     me.renderMasterChar = function(id, series)
     {
         var self = this;
         self.id = id;
-        self.series.data = [];
+        var ser = {};
+        ser.data = [];
         for (var i = 0; i < series.data.length; i++)
         {
-            self.series.data.push(series.data[i].slice(0));
+            ser.data.push(series.data[i].slice(0));
         }
-        self.series.name = series.name;
-        self.series.pointInterval = series.pointInterval;
+        ser.name = series.name;
+        ser.pointInterval = series.pointInterval;
+        me.series.push(ser);
+
         $('#' + id).highcharts(
                 {
                     chart:
@@ -124,7 +128,9 @@ var masterChartRenderer = function()
                             },
                     series: [series]
                 });
+        this.chart = $('#' + id).highcharts();
     };
+
 
     me.setOnZoomCallback = function(zoomCallback)
     {
@@ -159,6 +165,34 @@ var masterChartRenderer = function()
     me.changeSeries = function(series)
     {
 
+
+    };
+
+    me.changePlotbands = function(beginTime, EndTime)
+    {
+        var self = this;
+        var xAxis = self.chart.xAxis[0];
+        xAxis.removePlotBand('mask-before');
+        xAxis.addPlotBand({
+            id: 'mask-before',
+            from: self.series[0].data[0][0],
+            to: beginTime,
+            color: 'rgba(0, 0, 0, 0.2)'
+        });
+
+        xAxis.removePlotBand('mask-after');
+        xAxis.addPlotBand({
+            id: 'mask-after',
+            from: EndTime,
+            to: self.series[0].data[self.series[0].data.length - 1][0],
+            color: 'rgba(0, 0, 0, 0.2)'
+        });
+    };
+
+    me.addSeries = function(series)
+    {
+        this.series.push(series);
+        this.chart.addSeries(series, true);
     };
 
     return me;

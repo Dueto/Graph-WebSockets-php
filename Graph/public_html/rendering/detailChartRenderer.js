@@ -10,10 +10,11 @@ var detailChartRenderer = function()
     me.axis = '';
     me.series = '';
     me.divWidth = '';
+    me.divHieght = '';
     me.pointCount = '';
     me.timer = '';
     me.delta = 0;
-    me.resolutionMultiplier = 0.1;
+    me.resolutionMultiplier = 0.2;
     me.zoomMultiplier = 10;
     me.tooltipX = 10;
     me.tooltipY = 35;
@@ -23,10 +24,14 @@ var detailChartRenderer = function()
     me.onDraggingLeft = 80;
     me.onDraggingRigth = 0;
     me.dragData = null;
+    me.zoomType = 'xy';
+    me.chartOptions = '';
+    me.isLegendEnabled = true;
 
-    me.previousState = null;
+    me.previousStateX = null;
+    me.previousStateY = null;
 
-    me.db = new dataCacher('websockets', true, true, false, true);
+    me.db = new dataCacher('websockets', true, true, false, false);
     me.dataSources = [];
     me.currentDataSource = 0;
     me.allChannels = '';
@@ -39,6 +44,7 @@ var detailChartRenderer = function()
         self.id = id;
         self.masterChartId = masterChartId;
         self.divWidth = self.getDivWidth(id);
+        self.divHieght = self.getDivHieght(id);
         self.pointCount = self.divWidth * self.resolutionMultiplier;
         self.onDraggingRigth = self.divWidth - self.onDraggingLeft;
 
@@ -112,116 +118,135 @@ var detailChartRenderer = function()
     {
         var self = this;
         var title = self.formTitle();
-        $('#' + id).highcharts(
-                {
-                    chart:
-                            {
-                                zoomType: 'xy',
-                                events:
-                                        {
-                                            selection: self.onZoomEvent.bind(self)
-                                        },
-                                plotShadow: true,
-                                animation: false,
-                                marginRight: self.onDraggingLeft
+        self.chartOptions = {
+            chart:
+                    {
+                        options3d:
+                                {
+                                    enabled: true,
+                                    alpha: 10,
+                                    beta: 30,
+                                    depth: 250,
+                                    viewDistance: 5,
+                                    frame:
+                                            {
+                                                bottom: {size: 1, color: 'rgba(0,0,0,0.02)'},
+                                                back: {size: 1, color: 'rgba(0,0,0,0.04)'},
+                                                side: {size: 1, color: 'rgba(0,0,0,0.06)'}
+                                            }
+                                },
+                        zoomType: self.zoomType,
+                        events:
+                                {
+                                    selection: self.onZoomEvent.bind(self)
+                                },
+                        plotShadow: true,
+                        animation: false,
+                        marginRight: self.onDraggingLeft
 
-                            },
-                    credits:
-                            {
-                                enabled: false
-                            },
-                    title:
-                            {
-                                text: title,
-                                margin: 10
-                            },
-                    yAxis:
-                            {
-                            },
-                    xAxis:
-                            {
-                                type: 'datetime'
-                            },
-                    legend:
-                            {
-                                enabled: true,
-                                itemHiddenStyle:
-                                        {
-                                            color: '#000000',
-                                            fontWeight: 'normal'
-                                        },
-                                itemStyle:
-                                        {
-                                            color: '#000000',
-                                            fontWeight: 'bold'
-                                        },
-                                layout: 'vertical',
-                                symbolHeight: 20
-                            },
-                    plotOptions:
-                            {
-                                line:
-                                        {
-                                            dataLabels:
-                                                    {
-                                                        enabled: false,
-                                                    }
-                                        },
-                                series:
-                                        {
-                                            cursor: 'pointer',
-                                            point:
-                                                    {
-                                                        events:
-                                                                {
-                                                                    click: self.showLabels
-                                                                }
-                                                    },
-                                            marker:
-                                                    {
-                                                        enabled: false,
-                                                        states:
-                                                                {
-                                                                    hover:
-                                                                            {
-                                                                                enabled: true
-                                                                            }
+                    },
+            credits:
+                    {
+                        enabled: false
+                    },
+            title:
+                    {
+                        text: title,
+                        margin: 10
+                    },
+            yAxis:
+                    {
+                    },
+            xAxis:
+                    {
+                        type: 'datetime'
+                    },
+            legend:
+                    {
+                        enabled: self.isLegendEnabled,
+                        itemHiddenStyle:
+                                {
+                                    color: '#000000',
+                                    fontWeight: 'normal'
+                                },
+                        itemStyle:
+                                {
+                                    color: '#000000',
+                                    fontWeight: 'bold'
+                                },
+                        align: 'right',
+                        verticalAlign: 'top',
+                        layout: 'vertical',
+                        y: 30,
+                        x: -self.onDraggingLeft,
+                        symbolHeight: 20,
+                        floating: false
+                    },
+            plotOptions:
+                    {
+                        line:
+                                {
+                                    dataLabels:
+                                            {
+                                                enabled: false,
+                                            }
+                                },
+                        series:
+                                {
+                                    cursor: 'pointer',
+                                    point:
+                                            {
+                                                events:
+                                                        {
+                                                            click: self.showLabels
+                                                        }
+                                            },
+                                    marker:
+                                            {
+                                                enabled: false,
+                                                states:
+                                                        {
+                                                            hover:
+                                                                    {
+                                                                        enabled: true
+                                                                    }
 
 
-                                                                }
-                                                    },
-                                            shadow: false,
-                                            states:
-                                                    {
-                                                        hover:
-                                                                {
-                                                                    lineWidth: 2
-                                                                }
-                                                    },
-                                            threshold: null,
-                                        }
+                                                        }
+                                            },
+                                    shadow: false,
+                                    states:
+                                            {
+                                                hover:
+                                                        {
+                                                            lineWidth: 2
+                                                        }
+                                            },
+                                    threshold: null,
+                                }
 
 
-                            },
-                    tooltip:
-                            {
-                                useHTML: true,
-                                enabled: false,
-                                shared: true,
-                                crosshairs: [{
-                                        width: 1,
-                                        color: 'red',
-                                        dashStyle: 'longdash'
-                                    }],
-                                pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
-                                valueDecimals: 8,
-                                hideDelay: 0,
-                                animation: false,
-                                xDateformat: '%Y-%m-%d<br/>%H:%M',
-                                positioner: self.tooltipPosition.bind(self)
-                            },
-                    series: series
-                });
+                    },
+            tooltip:
+                    {
+                        useHTML: true,
+                        enabled: false,
+                        shared: true,
+                        crosshairs: [{
+                                width: 1,
+                                color: 'red',
+                                dashStyle: 'longdash'
+                            }],
+                        pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b><br/>',
+                        valueDecimals: 8,
+                        hideDelay: 0,
+                        animation: false,
+                        xDateformat: '%Y-%m-%d<br/>%H:%M',
+                        positioner: self.tooltipPosition.bind(self)
+                    },
+            series: series
+        };
+        $('#' + id).highcharts(self.chartOptions);
         /* (function(H)
          {
          H.wrap(H.Tooltip.prototype, 'refresh', function(proceed, point, e)
@@ -246,11 +271,12 @@ var detailChartRenderer = function()
         {
             var begTime = event.xAxis[0].min / 1000;
             var endTime = event.xAxis[0].max / 1000;
+            self.masterChart.changePlotbands(begTime * 1000, endTime * 1000);
             self.refreshChart(begTime, endTime);
         }
         else
         {
-            self.refreshChart(self.initialBeginTime, self.initialEndTime);
+            self.resetYAxis();
         }
 
     };
@@ -258,6 +284,7 @@ var detailChartRenderer = function()
     me.onZoomMasterChartEvent = function(event)
     {
         var self = this;
+        //self.hideLegend();
         var begTime = event.xAxis[0].min / 1000;
         var endTime = event.xAxis[0].max / 1000;
         begTime = (begTime.toString()).split('.')[0];
@@ -415,6 +442,7 @@ var detailChartRenderer = function()
         var xAxis = self.chart.xAxis[0];
         var yAxis = self.chart.yAxis[0];
         xAxis.setExtremes(beginTime * 1000, endTime * 1000);
+        self.masterChart.changePlotbands(beginTime * 1000, endTime * 1000);
 //        var maxvalue = self.chart.yAxis[0].max;
 //        var minvalue = self.chart.yAxis[0].min;
 //        yAxis.setExtremes(minvalue + (self.delta * minvalue / 5), maxvalue - (self.delta * minvalue / 5));
@@ -475,21 +503,40 @@ var detailChartRenderer = function()
     me.startDrag = function(event)
     {
         var self = this;
-        var chartContainer = document.getElementById(self.id);
-        if (!self.dragData)
+        if (event.which === 1)
         {
-            var e = event || event;
-            var left = e.clientX - chartContainer.offsetLeft;
-            if ((left >= 0 && left <= self.onDraggingLeft) || (left >= self.onDraggingRigth && left <= self.divWidth))
+            var chartContainer = document.getElementById(self.id);
+            if (!self.dragData)
             {
-                document.body.style.cursor = "move";
-                self.dragData =
-                        {
-                            x: e.clientX - chartContainer.offsetLeft,
-                            y: e.clientY - chartContainer.offsetTop
-                        };
-            }
+                var e = event || event;
+                var left = e.clientX - chartContainer.offsetLeft;
 
+                if (self.zoomType === 'xy')
+                {
+                    if ((left >= 0 && left <= self.onDraggingLeft) || (left >= self.onDraggingRigth && left <= self.divWidth))
+                    {
+                        document.body.style.cursor = "move";
+                        self.dragData =
+                                {
+                                    x: e.clientX - chartContainer.offsetLeft,
+                                    y: e.clientY - chartContainer.offsetTop
+                                };
+                    }
+                }
+                else
+                {
+                    document.body.style.cursor = "move";
+                    self.dragData =
+                            {
+                                x: e.clientX - chartContainer.offsetLeft,
+                                y: e.clientY - chartContainer.offsetTop
+                            };
+                }
+            }
+        }
+        else if (event.which === 2)
+        {
+            self.resetYAxis();
         }
     };
 
@@ -504,27 +551,46 @@ var detailChartRenderer = function()
             var btime;
             var etime;
 
-            if (self.dragData.x > self.onDraggingLeft)
+            if (self.previousStateX === null && self.previousStateY === null)
             {
-                diff = self.previousState - e.clientX;
+                self.previousStateX = e.clientX;
+                self.previousStateY = e.clientY;
+            }
+
+            var mapDiffX = self.previousStateX - e.clientX;
+            var mapDiffY = self.previousStateY - e.clientY;
+
+            var begTime = self.chart.xAxis[0].min / 1000;
+            var endTime = self.chart.xAxis[0].max / 1000;
+            var minY = self.chart.yAxis[0].min;
+            var maxY = self.chart.yAxis[0].max;
+
+            var multiplier = (endTime - begTime) / self.divWidth;
+            var multiplierY = (maxY - minY) / self.divHieght;
+            if (self.zoomType === 'xy')
+            {
+                btime = begTime + mapDiffX * multiplier;
+                etime = endTime + mapDiffX * multiplier;
+                self.zoomChart(btime, etime, false);
             }
             else
             {
-                diff = e.clientX - self.previousState;
+                btime = begTime + mapDiffX * multiplier;
+                etime = endTime + mapDiffX * multiplier;
+
+                var min = minY - mapDiffY * multiplierY;
+                var max = maxY - mapDiffY * multiplierY;
+
+                self.zoomChart(btime, etime, false);
+                self.chart.yAxis[0].options.startOnTick = false;
+                self.chart.yAxis[0].options.endOnTick = false;
+                self.chart.yAxis[0].setExtremes(min, max);
+
+
             }
-            var multiplier = (self.chart.xAxis[0].max / 1000 - self.chart.xAxis[0].min / 1000) / self.divWidth / self.zoomMultiplier / 2;
-            if (diff < 0)
-            {
-                btime = self.chart.xAxis[0].min / 1000 + (e.clientX - self.dragData.x) * multiplier;
-                etime = self.chart.xAxis[0].max / 1000 + (e.clientX - self.dragData.x) * multiplier;
-            }
-            else
-            {
-                btime = self.chart.xAxis[0].min / 1000 - (e.clientX - self.dragData.x) * multiplier;
-                etime = self.chart.xAxis[0].max / 1000 - (e.clientX - self.dragData.x) * multiplier;
-            }
-            self.previousState = e.clientX;
-            self.zoomChart(btime, etime, false);
+            self.previousStateX = e.clientX;
+            self.previousStateY = e.clientY;
+
 
         }
     };
@@ -539,9 +605,23 @@ var detailChartRenderer = function()
             document.body.style.cursor = "default";
             self.refreshChart(btime, etime);
             self.dragData = null;
+            self.previousStateX = null;
+            self.previousStateY = null;
         }
     };
 
+
+    me.resetYAxis = function()
+    {
+        var self = this;
+        var yAxis = self.chart.yAxis[0];
+        var max = yAxis.getExtremes().dataMax;
+        var min = yAxis.getExtremes().dataMin;
+        var margin = (max - min) / 10;
+        self.chart.yAxis[0].options.startOnTick = false;
+        self.chart.yAxis[0].options.endOnTick = false;
+        yAxis.setExtremes(min - margin, max + margin);
+    };
 
     me.tooltipPosition = function()
     {
@@ -553,6 +633,11 @@ var detailChartRenderer = function()
     me.getDivWidth = function(id)
     {
         return document.getElementById(id).offsetWidth;
+    };
+
+    me.getDivHieght = function(id)
+    {
+        return document.getElementById(id).offsetHeight;
     };
 
     me.formTitle = function()
@@ -568,6 +653,42 @@ var detailChartRenderer = function()
             title = title + db_server + ' ' + db_name + ' ' + db_group + ' resolution:' + level + ' ';
         }
         return title;
+    };
+
+    me.hideLegend = function()
+    {
+        var self = this;
+        var begTime = self.chart.xAxis[0].min;
+        var endTime = self.chart.xAxis[0].max;
+        var max = self.chart.yAxis[0].max;
+        var min = self.chart.yAxis[0].min;
+
+        self.isLegendEnabled = false;
+        self.formChart(self.id, self.series);
+        self.chart = $('#' + self.id).highcharts();
+        self.chart.yAxis[0].options.startOnTick = false;
+        self.chart.yAxis[0].options.endOnTick = false;
+        self.chart.yAxis[0].setExtremes(min, max);
+        self.chart.xAxis[0].setExtremes(begTime, endTime);
+        self.masterChart.changePlotbands(begTime, endTime);
+    };
+
+    me.showLegend = function()
+    {
+        var self = this;
+        var begTime = self.chart.xAxis[0].min;
+        var endTime = self.chart.xAxis[0].max;
+        var max = self.chart.yAxis[0].max;
+        var min = self.chart.yAxis[0].min;
+
+        self.isLegendEnabled = true;
+        self.formChart(self.id, self.series);
+        self.chart = $('#' + self.id).highcharts();
+        self.chart.yAxis[0].options.startOnTick = false;
+        self.chart.yAxis[0].options.endOnTick = false;
+        self.chart.yAxis[0].setExtremes(min, max);
+        self.chart.xAxis[0].setExtremes(begTime, endTime);
+        self.masterChart.changePlotbands(begTime, endTime);
     };
 
     me.showLabels = function(e)
@@ -606,7 +727,7 @@ var detailChartRenderer = function()
         var msg = '<div class="dialog">Point: ' + Highcharts.dateFormat('%Y-%m-%d<br/>%H:%M:%S', this.x) + '</br>Value: ' + this.y + '</div>';
 
         $(msg).dialog({
-            dialogClass: 'dailog',
+            dialogClass: 'dialog',
             title: this.series.name,
             position: [e.clientX + 10, e.clientY + 10],
             closeText: 'Close',
@@ -686,9 +807,47 @@ var detailChartRenderer = function()
 
     };
 
+    me.changeZoomTypeToMap = function()
+    {
+        var self = this;
+        var begTime = self.chart.xAxis[0].min;
+        var endTime = self.chart.xAxis[0].max;
+        var max = self.chart.yAxis[0].max;
+        var min = self.chart.yAxis[0].min;
+
+        self.zoomType = '';
+        self.chart.destroy();
+        self.formChart(self.id, self.series);
+        self.chart = $('#' + self.id).highcharts();
+        self.chart.yAxis[0].options.startOnTick = false;
+        self.chart.yAxis[0].options.endOnTick = false;
+        self.chart.yAxis[0].setExtremes(min, max);
+        self.chart.xAxis[0].setExtremes(begTime, endTime);
+        self.masterChart.changePlotbands(begTime, endTime);
+    };
+
+    me.changeZoomTypeToXY = function()
+    {
+        var self = this;
+        var begTime = self.chart.xAxis[0].min;
+        var endTime = self.chart.xAxis[0].max;
+        var max = self.chart.yAxis[0].max;
+        var min = self.chart.yAxis[0].min;
+
+        self.zoomType = 'xy';
+        self.formChart(self.id, self.series);
+        self.chart = $('#' + self.id).highcharts();
+        self.chart.yAxis[0].options.startOnTick = false;
+        self.chart.yAxis[0].options.endOnTick = false;
+        self.chart.yAxis[0].setExtremes(min, max);
+        self.chart.xAxis[0].setExtremes(begTime, endTime);
+        self.masterChart.changePlotbands(begTime, endTime);
+
+    };
+
     me.changeMasterChartSeries = function(seriesId)
     {
-        if (seriesId > this.series.length)
+        if (seriesId > this.series.length && seriesId < 0)
         {
             return;
         }
@@ -699,6 +858,11 @@ var detailChartRenderer = function()
     {
         this.series.push(series);
         this.chart.addSeries(series, isRedraw);
+    };
+
+    me.addSeriesToMasterChart = function()
+    {
+
     };
 
     me.addDataSource = function()
